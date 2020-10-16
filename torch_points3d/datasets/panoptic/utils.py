@@ -4,10 +4,12 @@ import torch
 def set_extra_labels(data, instance_classes, num_max_objects):
     """ Adds extra labels for the instance and object segmentation tasks
     - num_instances: number of instances
-    - center_label: [64, 3] on centre per instance
+    - center_label: [num_max_objects, 3] one bbox center per instance
     - instance_labels: [num_points]
-    - vote_label: [num_points, 3] displacmenet between each point and the center.
-    - instance_mask: [num_points] boolean mask 
+    - vote_label: [num_points, 3] displacement of bbox center with respect to the object points
+    - instance_mask: [num_points] boolean mask
+    - object_center_label: [num_max_objects, 3] one per instance mean position vector
+    - object_vote_label: [num_points, 3] displacement of each object point with respect to the object center
     """
     # Initaliase variables
     num_points = data.pos.shape[0]
@@ -16,7 +18,9 @@ def set_extra_labels(data, instance_classes, num_max_objects):
     # compute votes *AFTER* augmentation
     instances = np.unique(data.instance_labels)
     centers = []
+    object_centers = []
     point_votes = torch.zeros([num_points, 3])
+    object_point_votes = torch.zeros([num_points, 3])
     instance_labels = torch.zeros(num_points, dtype=torch.long)
     instance_idx = 1
     for i_instance in instances:
@@ -31,6 +35,9 @@ def set_extra_labels(data, instance_classes, num_max_objects):
             center = 0.5 * (min_pos + max_pox)
             point_votes[ind, :] = center - pos
             centers.append(torch.tensor(center))
+            object_center = pos.mean(axis=0)
+            object_point_votes[ind, :] = pos - object_center
+            object_centers.append(torch.tensor(object_center))
             instance_labels[ind] = instance_idx
             instance_idx += 1
 
@@ -39,10 +46,13 @@ def set_extra_labels(data, instance_classes, num_max_objects):
         raise ValueError(
             "We have more objects than expected. Please increase the NUM_MAX_OBJECTS variable.")
     data.center_label = torch.zeros((num_max_objects, 3))
+    data.object_center_label = torch.zeros((num_max_objects, 3))
     if num_instances:
         data.center_label[:num_instances, :] = torch.stack(centers)
+        data.object_center_label[:num_instances, :] = torch.stack(object_centers)
 
     data.vote_label = point_votes.float()
+    data.object_point_votes = object_point_votes.float()
     data.instance_labels = instance_labels
     data.instance_mask = instance_labels != 0
     data.num_instances = torch.tensor([num_instances])

@@ -737,7 +737,7 @@ class Scannet(InMemoryDataset):
                     for id, scan_name in enumerate(scan_names)
                 ]
                 if self.use_multiprocessing:
-                    with multiprocessing.Pool(processes=self.process_workers) as pool:
+                    with multiprocessing.get_context("spawn").Pool(processes=self.process_workers) as pool:
                         datas = pool.starmap(Scannet.process_func, args)
                 else:
                     datas = []

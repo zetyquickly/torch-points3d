@@ -2,11 +2,11 @@ data:
     class: scannet.ScannetDataset
     dataset_name: 'scannet'
     task: panoptic
-    dataroot: "data"
+    dataroot: "/tp3d/data"
     version: 'v2'
     use_instance_labels: True
     donotcare_class_ids: []
-    process_workers: 8
+    process_workers: 40
     is_test: False
   
     grid_size: 0.05
